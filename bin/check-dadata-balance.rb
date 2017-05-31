@@ -42,11 +42,24 @@ require 'erb'
 
 class DadataBalanceCheck < Sensu::Plugin::Check::CLI
   include Sensu::Plugin::Utils
-  option :json_config,
-         description: 'Config name',
-         short: '-j config_key',
-         long: '--json_config config_key',
-         required: false
+
+  option :warning,
+         description: 'Warning threshold expression',
+         short: '-w WARNING',
+         long: '--warning WARNING',
+         default: 200
+
+  option :critical,
+         description: 'Critical threshold expression',
+         short: '-c CRITICAL',
+         long: '--critical CRITICAL',
+         default: 100
+
+  option :timeout,
+         description: 'Connection timeout (seconds)',
+         short: '-T TIMEOUT',
+         long: '--timeout TIMEOUT',
+         default: 10
 
   def dadata_token
     settings['dadata']['token']
@@ -62,11 +75,12 @@ class DadataBalanceCheck < Sensu::Plugin::Check::CLI
         'X-Secret': dadata_secret
     }
     resp = RestClient::Request.execute(method: :get, url: 'https://dadata.ru/api/v2/profile/balance',
-                            timeout: 10, headers: auth_data)
+                            timeout: config[:timeout].to_i, headers: auth_data)
     balance = JSON.parse(resp)['balance']
-    if balance > 200
+
+    if balance > config[:warning].to_i
        ok 'DaData balance OK: ' + balance.to_s
-    elsif balance > 100
+    elsif balance > config[:critical].to_i
        warning 'DaData balance low: ' + balance.to_s
     else
        critical 'DaData balance: ' + balance.to_s
