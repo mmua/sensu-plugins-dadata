@@ -57,14 +57,20 @@ class DadataBalanceCheck < Sensu::Plugin::Check::CLI
   end
 
   def run
-    params = {
-        'Authorization': api_user,
-        'X-Secret': api_secret
+    auth_data = {
+        'Authorization': "Token #{dadata_token}",
+        'X-Secret': dadata_secret
     }
-
-
-    resp = RestClient.post('https://dadata.ru/api/v2/profile/balance', headers = auth_data)
-    ok '... done.'.to_s
+    resp = RestClient::Request.execute(method: :get, url: 'https://dadata.ru/api/v2/profile/balance',
+                            timeout: 10, headers: auth_data)
+    balance = JSON.parse(resp)['balance']
+    if balance > 200
+       ok 'DaData balance OK: ' + balance.to_s
+    elsif balance > 100
+       warning 'DaData balance low: ' + balance.to_s
+    else
+       critical 'DaData balance: ' + balance.to_s
+    end
     clear_error
   end
 
